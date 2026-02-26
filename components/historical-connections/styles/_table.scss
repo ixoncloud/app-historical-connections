@@ -1,0 +1,72 @@
+  table.base-table {
+      border-collapse: collapse;
+      width: 100%;
+      table-layout: fixed;
+
+      thead {
+          font-size: 12px;
+          font-weight: 600;
+          text-align: left;
+
+          position: sticky;
+          top: 0;
+          z-index: 10;
+          text-align: left;
+          background: var(--card-bg);
+
+          tr {
+              border-bottom: none;
+          }
+      }
+
+      tbody {
+          font-size: 12px;
+          font-weight: 400;
+      }
+
+      tr {
+          height: 34px;
+          border-bottom: 1px solid color-mix(in srgb, transparent, currentcolor 12%);
+      }
+
+      tr td {
+          font-size: 14px;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          padding-right: 2px;
+
+          >a {
+              // Remove all a styling
+              all: unset;
+              cursor: auto;
+              text-decoration: none;
+          }
+
+          >.hasNavigationUrl {
+              cursor: pointer;
+
+              &:hover {
+                  text-decoration-line: underline;
+              }
+          }
+      }
+
+      tbody tr:hover {
+          background-color: rgb(0 0 0 / 4%) !important;
+      }
+  }
+
+  .column-header-cell {
+      cursor: pointer;
+      user-select: none;
+  }
+
+  .column-header {
+      display: flex;
+      align-items: center;
+  }
+
+  .column-name {
+      font-size: 12px;
+  }
