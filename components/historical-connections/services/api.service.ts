@@ -37,8 +37,8 @@ export class ApiService {
   }
 
   createAuditlogUrl() {
-    const from = '2026-01-10T00:00:00Z';
-    const to = '2026-01-15T00:00:00Z';
+    const from = '2025-06-01T00:00:00Z';
+    const to = '2026-01-31T00:00:00Z';
     return this.context.getApiUrl("AuditLogList", {
       "page-size": "4000",
       filters: `in(target,"AgentConnectedUser","AgentDisconnectedUser")&filters=between(time,"${from}","${to}")`
@@ -88,10 +88,28 @@ export class ApiService {
     });
     const options = { method: "GET", headers: this.headers };
 
+    console.log('start collecting');
+
     return await Promise.all([
       this.fetchAllPaginated<Agent>(agentsUrl, options),
       this.fetchAllPaginated<User>(usersUrl, options),
     ]).then(async ([agents, users]) => {
+
+    const usersDict = users.reduce<Record<string, User>>(
+      (acc, user) => {
+      acc[user.publicId] = user;
+      return acc;
+    },
+    {}
+    );
+
+    const agentsDict = agents.reduce<Record<string, Agent>>(
+      (acc, agent) => {
+      acc[agent.publicId] = agent;
+      return acc;
+    },
+    {}
+    );
       // const agentsWithConnections: Agent[] = agents.filter((a: Agent) => a.connectedUsers.length > 0);
 
       const results: ConnectionEvent[] = (await this.fetchAllPaginated<AuditLog>(this.createAuditlogUrl(), options)).map(auditlog => {
@@ -113,19 +131,20 @@ export class ApiService {
             {
               userName: pair.connection.user.name,
               userId: pair.connection.user.publicId,
-              userEmail: users.find(user => user.publicId === pair.connection.user.publicId)?.emailAddress ?? '-' ,
+              userEmail: usersDict[pair.connection.user.publicId]?.emailAddress ?? '-' ,
               agentId: pair.connection.agentId,
-              agentName: agents.find(agent => agent.publicId === pair.connection.agentId)?.name ?? '-' ,
+              agentName: agentsDict[pair.connection.agentId]?.name ?? '-' ,
               startDate: this.getDateTimeString(pair.connection.time),
-              startDateMillis: this.getDistanceFromNowInMilliseconds(pair.connection.time),
+              startDateMillis: this.getTimestampInMilliseconds(pair.connection.time),
               endDate: this.getDateTimeString(pair.disconnection.time),
-              endDateMillis: this.getDistanceFromNowInMilliseconds(pair.disconnection.time),
+              endDateMillis: this.getTimestampInMilliseconds(pair.disconnection.time),
               duration: "", // Just for sorting logic
               durationString: this.getDistanceString(pair.connection.time, pair.disconnection.time),
               durationMillis: this.getDistanceInMilliseconds(pair.connection.time, pair.disconnection.time),
             },
           ];
       }
+      console.log(historicalConnections.length);
       return historicalConnections;
     });
   }
@@ -162,6 +181,7 @@ export class ApiService {
         unmatchedItems.push(connectionDict[key]);
       }
     }
+    console.log(unmatchedItems.length);
 
     return pairs;
   }
@@ -226,19 +246,24 @@ export class ApiService {
     return differenceMs;
   }
 
-    /**
-   * Returns the distance to the present in milliseconds
-   * Used for determining the order of the durations 
-   */
-  getDistanceFromNowInMilliseconds(datetimeString: string) {
-    if (!datetimeString) {
-      return 0;
-    }
-    const dateToCompare = new Date(datetimeString);
-    const now = new Date();
+  // getDistanceFromNowInMilliseconds(datetimeString: string) {
+  //   if (!datetimeString) {
+  //     return 0;
+  //   }
+  //   const dateToCompare = new Date(datetimeString);
+  //   const now = new Date();
 
-    // Get the difference between now and when the connection was created
-    const differenceMs = now.getTime() - dateToCompare.getTime();
-    return differenceMs;
+  //   // Get the difference between now and when the connection was created
+  //   const differenceMs = now.getTime() - dateToCompare.getTime();
+  //   return differenceMs;
+  // }
+
+  getTimestampInMilliseconds(datetimeString: string) {
+  if (!datetimeString) {
+    return 0;
   }
+
+  const date = new Date(datetimeString);
+  return date.getTime(); // milliseconds since Jan 1, 1970 (UTC)
+}
 }

@@ -50,34 +50,69 @@
       })
     : historicalConnections;
   // $: isNarrow = tableWidth < 320; Maybe for later
-  $: sortedConnections = [...filteredConnections].sort((a, b) => {
-    let aValue: string | number = a[sortColumn]!;
-    let bValue: string | number = b[sortColumn]!;
 
-    if (sortColumn === "duration") {
-      aValue = a["durationMillis"];
-      bValue = b["durationMillis"];
-    } else if (sortColumn === "startDate") {
-      aValue = a["startDateMillis"];
-      bValue = b["startDateMillis"];
-    } else if (sortColumn === "endDate") {
-      aValue = a["endDateMillis"];
-      bValue = b["endDateMillis"];
-    }
+  // $: sortedConnections = [...filteredConnections].sort((a, b) => {
+  //   let aValue: string | number = a[sortColumn]!;
+  //   let bValue: string | number = b[sortColumn]!;
 
-    if (!aValue || !bValue) {
+  //   if (sortColumn === "duration") {
+  //     aValue = a["durationMillis"];
+  //     bValue = b["durationMillis"];
+  //   } else if (sortColumn === "startDate") {
+  //     aValue = a["startDateMillis"];
+  //     bValue = b["startDateMillis"];
+  //   } else if (sortColumn === "endDate") {
+  //     aValue = a["endDateMillis"];
+  //     bValue = b["endDateMillis"];
+  //   }
+
+  //   if (!aValue || !bValue) {
+  //     return 0;
+  //   }
+
+  //   if (typeof aValue === "string" && typeof bValue === "string") {
+  //     aValue = aValue.toLowerCase();
+  //     bValue = bValue.toLowerCase();
+  //   }
+
+  //   if (aValue < bValue) return sortDirection === "asc" ? -1 : 1;
+  //   if (aValue > bValue) return sortDirection === "asc" ? 1 : -1;
+  //   return 0;
+  // });
+
+  let sortedConnections: HistoricalConnection[] = [];
+  $: {
+    console.log("start sort");
+    const result = [...filteredConnections].sort((a, b) => {
+      let aValue: string | number = a[sortColumn]!;
+      let bValue: string | number = b[sortColumn]!;
+
+      if (sortColumn === "duration") {
+        aValue = a["durationMillis"];
+        bValue = b["durationMillis"];
+      } else if (sortColumn === "startDate") {
+        aValue = a["startDateMillis"];
+        bValue = b["startDateMillis"];
+      } else if (sortColumn === "endDate") {
+        aValue = a["endDateMillis"];
+        bValue = b["endDateMillis"];
+      }
+
+      if (!aValue || !bValue) return 0;
+
+      if (typeof aValue === "string" && typeof bValue === "string") {
+        aValue = aValue.toLowerCase();
+        bValue = bValue.toLowerCase();
+      }
+
+      if (aValue < bValue) return sortDirection === "asc" ? -1 : 1;
+      if (aValue > bValue) return sortDirection === "asc" ? 1 : -1;
       return 0;
-    }
+    });
 
-    if (typeof aValue === "string" && typeof bValue === "string") {
-      aValue = aValue.toLowerCase();
-      bValue = bValue.toLowerCase();
-    }
-
-    if (aValue < bValue) return sortDirection === "asc" ? -1 : 1;
-    if (aValue > bValue) return sortDirection === "asc" ? 1 : -1;
-    return 0;
-  });
+    sortedConnections = result;
+    console.log("Sort finished");
+  }
 
   /**
    * Ensures the sorting arrow is correctly positioned
