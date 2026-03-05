@@ -15,7 +15,7 @@
   export let context: ComponentContext;
   let search = "";
   let sortColumn: Column = "endDate";
-  let sortDirection: "asc" | "desc" = "asc";
+  let sortDirection: "asc" | "desc" = "desc";
   let columns: {
     id: Column;
     name: string;

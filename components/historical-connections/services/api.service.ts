@@ -37,8 +37,8 @@ export class ApiService {
   }
 
   createAuditlogUrl() {
-    const from = "2025-06-01T00:00:00Z";
-    const to = "2026-01-31T00:00:00Z";
+    const from = "2026-01-10T00:00:00Z";
+    const to = "2026-01-15T00:00:00Z";
     return this.context.getApiUrl("AuditLogList", {
       "page-size": "4000",
       filters: `in(target,"AgentConnectedUser","AgentDisconnectedUser")&filters=between(time,"${from}","${to}")`,
