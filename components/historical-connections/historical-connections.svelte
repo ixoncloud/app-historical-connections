@@ -188,9 +188,18 @@
 
         <div class="field">
           <label for="to" class="to"
-            >{context.translate("TO", undefined, {
-              source: "global",
-            })}</label
+            >{context
+              .translate("TO", undefined, {
+                source: "global",
+              })
+              .slice(0, 1)
+              .toUpperCase()}{context
+              .translate("TO", undefined, {
+                source: "global",
+              })
+              .toUpperCase()
+              .slice(1)
+              .toLowerCase()}</label
           >
           <input type="date" id="to" bind:value={toDate} />
         </div>
