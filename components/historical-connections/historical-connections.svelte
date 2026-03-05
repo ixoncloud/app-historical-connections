@@ -36,12 +36,12 @@
   let historicalConnections: HistoricalConnection[] = [];
   let tableWidth = 0;
   let tableScrollTop = 0;
-  let searchPlaceholderString = "Search";
+  // let searchPlaceholderString = "Search";
   let titleString = "Active Connections";
 
   let fromDate: string;
   let toDate: string;
-  $: minToDate = fromDate;
+  // $: minToDate = fromDate;
 
   $: filteredConnections = search
     ? historicalConnections.filter((connection) => {
@@ -147,9 +147,9 @@
     const client = context.createResourceDataClient();
     apiService = new ApiService(context);
 
-    searchPlaceholderString = context.translate("SEARCH", undefined, {
-      source: "global",
-    });
+    // searchPlaceholderString = context.translate("SEARCH", undefined, {
+    //   source: "global",
+    // });
     titleString = context.translate("HISTORICAL_CONNECTIONS", undefined, {
       source: "global",
     });
@@ -158,13 +158,6 @@
     if (titleString === "HISTORICAL_CONNECTIONS") {
       titleString = "Historical Connections";
     }
-
-    // Get the connections immediately
-
-    // When the filter changes, do this. otherwise do not
-    // if (fromDate && toDate) {
-    //   getActiveConnections(apiService);
-    // }
 
     // Clear the connection when the component is no longer visible
     return () => {
@@ -185,12 +178,20 @@
 
       <div class="period-select-container">
         <div class="field">
-          <label for="from" class="from">From</label>
+          <label for="from" class="from"
+            >{context.translate("FROM", undefined, {
+              source: "global",
+            })}</label
+          >
           <input type="date" id="from" bind:value={fromDate} />
         </div>
 
         <div class="field">
-          <label for="to" class="to">To</label>
+          <label for="to" class="to"
+            >{context.translate("TO", undefined, {
+              source: "global",
+            })}</label
+          >
           <input type="date" id="to" bind:value={toDate} />
         </div>
       </div>
@@ -206,9 +207,12 @@
         </div>
         <input
           class="search-input"
-          placeholder={searchPlaceholderString}
+          placeholder={context.translate("SEARCH", undefined, {
+            source: "global",
+          })}
           bind:value={search}
         />
+        <!-- {searchPlaceholderString} -->
       </div>
     </div>
     <div class="card-content">
@@ -364,7 +368,7 @@
     scrollbar-width: thin;
   }
 
-  .no-active-connections {
+  .no-historical-connections {
     font-size: 14px;
     margin-bottom: 16px;
   }
