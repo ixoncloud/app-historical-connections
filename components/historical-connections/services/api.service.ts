@@ -22,9 +22,9 @@ export class ApiService {
     };
   }
 
-  createAuditlogUrl() {
-    const from = "2026-01-10T00:00:00";
-    const to = "2026-01-15T23:59:59";
+  createAuditlogUrl(period: { fromDate: string; toDate: string }) {
+    const from = `${period.fromDate}T00:00:00`;
+    const to = `${period.toDate}T23:59:59`;
 
     const fromUTC = new Date(from).toISOString();
     const toUTC = new Date(to).toISOString();
@@ -70,7 +70,10 @@ export class ApiService {
   /**
    * Retrieves all active connections
    */
-  async getActiveConnections(): Promise<HistoricalConnection[]> {
+  async getActiveConnections(period: {
+    fromDate: string;
+    toDate: string;
+  }): Promise<HistoricalConnection[]> {
     const usersUrl = this.context.getApiUrl("UserList", {
       "page-size": "4000",
       fields: "publicId, name, emailAddress",
@@ -102,7 +105,7 @@ export class ApiService {
 
       const results: ConnectionEvent[] = (
         await this.fetchAllPaginated<AuditLog>(
-          this.createAuditlogUrl(),
+          this.createAuditlogUrl(period),
           options,
         )
       ).map((auditlog) => {

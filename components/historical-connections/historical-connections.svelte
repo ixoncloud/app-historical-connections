@@ -39,8 +39,8 @@
   let searchPlaceholderString = "Search";
   let titleString = "Active Connections";
 
-  let fromDate: string = "";
-  let toDate: string = "";
+  let fromDate: string;
+  let toDate: string;
   $: minToDate = fromDate;
 
   $: filteredConnections = search
@@ -125,9 +125,11 @@
   }
 
   function getActiveConnections(apiService: ApiService) {
-    apiService.getActiveConnections().then((connections) => {
-      historicalConnections = connections;
-    });
+    apiService
+      .getActiveConnections({ fromDate, toDate })
+      .then((connections) => {
+        historicalConnections = connections;
+      });
   }
 
   /**
@@ -140,9 +142,10 @@
     return parts[0];
   }
 
+  let apiService: ApiService;
   onMount(() => {
     const client = context.createResourceDataClient();
-    const apiService = new ApiService(context);
+    apiService = new ApiService(context);
 
     searchPlaceholderString = context.translate("SEARCH", undefined, {
       source: "global",
@@ -157,13 +160,22 @@
     }
 
     // Get the connections immediately
-    getActiveConnections(apiService);
+
+    // When the filter changes, do this. otherwise do not
+    // if (fromDate && toDate) {
+    //   getActiveConnections(apiService);
+    // }
 
     // Clear the connection when the component is no longer visible
     return () => {
       client.destroy();
     };
   });
+
+  $: if (fromDate && toDate && apiService) {
+    console.log(fromDate, toDate);
+    getActiveConnections(apiService);
+  }
 </script>
 
 <main>
@@ -179,7 +191,7 @@
 
         <div class="field">
           <label for="to" class="to">To</label>
-          <input type="date" id="to" bind:value={toDate} min={minToDate} />
+          <input type="date" id="to" bind:value={toDate} />
         </div>
       </div>
 
@@ -296,7 +308,7 @@
           </table>
         </div>
       {:else}
-        <div class="no-active-connections">No active connections</div>
+        <div class="no-historical-connections">No historical connections</div>
       {/if}
     </div>
   </div>
