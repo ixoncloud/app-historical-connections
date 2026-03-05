@@ -39,6 +39,10 @@
   let searchPlaceholderString = "Search";
   let titleString = "Active Connections";
 
+  let fromDate: string = "";
+  let toDate: string = "";
+  $: minToDate = fromDate;
+
   $: filteredConnections = search
     ? historicalConnections.filter((connection) => {
         const s = search.toLowerCase();
@@ -50,35 +54,6 @@
       })
     : historicalConnections;
   // $: isNarrow = tableWidth < 320; Maybe for later
-
-  // $: sortedConnections = [...filteredConnections].sort((a, b) => {
-  //   let aValue: string | number = a[sortColumn]!;
-  //   let bValue: string | number = b[sortColumn]!;
-
-  //   if (sortColumn === "duration") {
-  //     aValue = a["durationMillis"];
-  //     bValue = b["durationMillis"];
-  //   } else if (sortColumn === "startDate") {
-  //     aValue = a["startDateMillis"];
-  //     bValue = b["startDateMillis"];
-  //   } else if (sortColumn === "endDate") {
-  //     aValue = a["endDateMillis"];
-  //     bValue = b["endDateMillis"];
-  //   }
-
-  //   if (!aValue || !bValue) {
-  //     return 0;
-  //   }
-
-  //   if (typeof aValue === "string" && typeof bValue === "string") {
-  //     aValue = aValue.toLowerCase();
-  //     bValue = bValue.toLowerCase();
-  //   }
-
-  //   if (aValue < bValue) return sortDirection === "asc" ? -1 : 1;
-  //   if (aValue > bValue) return sortDirection === "asc" ? 1 : -1;
-  //   return 0;
-  // });
 
   let sortedConnections: HistoricalConnection[] = [];
   $: {
@@ -195,6 +170,19 @@
   <div class="card">
     <div class="card-header with-actions">
       <h3 class="card-title">{titleString}</h3>
+
+      <div class="period-select-container">
+        <div class="field">
+          <label for="from" class="from">From</label>
+          <input type="date" id="from" bind:value={fromDate} />
+        </div>
+
+        <div class="field">
+          <label for="to" class="to">To</label>
+          <input type="date" id="to" bind:value={toDate} min={minToDate} />
+        </div>
+      </div>
+
       <div class="search-input-container">
         <div class="search-input-prefix">
           <svg width="24" height="24" viewBox="0 0 24 24">
@@ -323,6 +311,35 @@
 
   main {
     height: 100%;
+  }
+
+  .period-select-container {
+    display: flex;
+    gap: 0.5rem;
+    margin-right: 0.5rem;
+
+    .field {
+      font-family: Roboto, "Helvetica Neue", sans-serif;
+      // font-size: 12px;
+      // font-weight: 400;
+      padding: 0.5rem;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      max-width: 300px;
+
+      display: flex;
+      flex-direction: column;
+
+      & .from,
+      & .to {
+        font-size: 10px;
+      }
+
+      & input {
+        border: none;
+        cursor: pointer;
+      }
+    }
   }
 
   .table-wrapper {

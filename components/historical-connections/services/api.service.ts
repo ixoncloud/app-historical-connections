@@ -2,7 +2,7 @@ import type { ComponentContext } from "@ixon-cdk/types";
 import type { Agent } from "../models/agent";
 import type { User } from "../models/user";
 import type { HistoricalConnection } from "../models/historical-connection";
-import { format, formatDistance, formatDistanceToNow } from "date-fns";
+import { format, formatDistance } from "date-fns";
 import * as locale from "date-fns/locale";
 import type { AuditLog } from "../models/audit-log";
 import type { ConnectionEvent } from "../models/connectionEvent";
@@ -22,26 +22,18 @@ export class ApiService {
     };
   }
 
-  /**
-   * The amount of audit logs being collected for each agent
-   * ! CAREFUL: This can get out of hand quickly if you're dealing with hundreds of agents (= hundreds of requests)
-   */
-  createAgentAuditlogUrl(agentId: string) {
-    const from = "2026-01-01T00:00:00Z";
-    const to = "2026-01-15T00:00:00Z";
-    return this.context.getApiUrl("AgentAuditLogList", {
-      agentId,
-      "page-size": "500",
-      filters: `in(target,"AgentConnectedUser","AgentDisconnectedUser")&filters=between(time,"${from}","${to}")`,
-    });
-  }
-
   createAuditlogUrl() {
-    const from = "2026-01-10T00:00:00Z";
-    const to = "2026-01-15T00:00:00Z";
+    const from = "2026-01-10T00:00:00";
+    const to = "2026-01-15T23:59:59";
+
+    const fromUTC = new Date(from).toISOString();
+    const toUTC = new Date(to).toISOString();
+    const fromUTCFormatted = fromUTC.split(".")[0] + "Z";
+    const toUTCFormatted = toUTC.split(".")[0] + "Z";
+
     return this.context.getApiUrl("AuditLogList", {
       "page-size": "4000",
-      filters: `in(target,"AgentConnectedUser","AgentDisconnectedUser")&filters=between(time,"${from}","${to}")`,
+      filters: `in(target,"AgentConnectedUser","AgentDisconnectedUser")&filters=between(time,"${fromUTCFormatted}","${toUTCFormatted}")`,
     });
   }
 
@@ -156,7 +148,6 @@ export class ApiService {
           },
         ];
       }
-      console.log(historicalConnections.length);
       return historicalConnections;
     });
   }
@@ -206,7 +197,8 @@ export class ApiService {
         unmatchedItems.push(connectionDict[key]);
       }
     }
-    console.log(unmatchedItems.length);
+    console.log("Pairs: ", pairs.length);
+    console.log("Unmatched: ", unmatchedItems.length);
 
     return pairs;
   }
