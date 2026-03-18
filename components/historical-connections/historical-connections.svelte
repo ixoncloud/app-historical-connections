@@ -3,6 +3,7 @@
   import { onMount } from "svelte";
   import type { HistoricalConnection } from "./models/historical-connection";
   import { ApiService } from "./services/api.service";
+  import { ParseService } from "./services/parse.service";
 
   type Column =
     | "userName"
@@ -143,9 +144,11 @@
   }
 
   let apiService: ApiService;
+  let parseService = new ParseService();
   onMount(() => {
     const client = context.createResourceDataClient();
     apiService = new ApiService(context);
+    parseService = new ParseService();
 
     // searchPlaceholderString = context.translate("SEARCH", undefined, {
     //   source: "global",
@@ -175,6 +178,24 @@
   <div class="card">
     <div class="card-header with-actions">
       <h3 class="card-title">{titleString}</h3>
+
+      <div class="csv-button-container">
+        <button
+          class="csv-button"
+          title="Download as CSV"
+          on:click={() => parseService.downloadAsCSV(sortedConnections)}
+        >
+          <svg
+            height="24px"
+            viewBox="0 -960 960 960"
+            width="24px"
+            fill="currentColor"
+            ><path
+              d="M480-320 280-520l56-58 104 104v-326h80v326l104-104 56 58-200 200ZM240-160q-33 0-56.5-23.5T160-240v-120h80v120h480v-120h80v120q0 33-23.5 56.5T720-160H240Z"
+            /></svg
+          >
+        </button>
+      </div>
 
       <div class="period-select-container">
         <div class="field">
@@ -222,6 +243,19 @@
           bind:value={search}
         />
         <!-- {searchPlaceholderString} -->
+      </div>
+      <div class="options-menu-button-container">
+        <button title="Options" class="options-menu-button">
+          <svg
+            height="24px"
+            viewBox="0 -960 960 960"
+            width="24px"
+            fill="currentColor"
+            ><path
+              d="M480-160q-33 0-56.5-23.5T400-240q0-33 23.5-56.5T480-320q33 0 56.5 23.5T560-240q0 33-23.5 56.5T480-160Zm0-240q-33 0-56.5-23.5T400-480q0-33 23.5-56.5T480-560q33 0 56.5 23.5T560-480q0 33-23.5 56.5T480-400Zm0-240q-33 0-56.5-23.5T400-720q0-33 23.5-56.5T480-800q33 0 56.5 23.5T560-720q0 33-23.5 56.5T480-640Z"
+            /></svg
+          >
+        </button>
       </div>
     </div>
     <div class="card-content">
@@ -287,19 +321,10 @@
                   {#each columns as column}
                     <td
                       on:mouseenter={(e) =>
-                        showTooltipIfEllipsed(
-                          e,
-                          String(
-                            column.id !== "duration"
-                              ? connection[column.id]
-                              : connection["durationString"],
-                          ),
-                        )}
+                        showTooltipIfEllipsed(e, String(connection[column.id]))}
                     >
                       <a
-                        title={column.id !== "duration"
-                          ? connection[column.id]
-                          : connection["durationString"]}
+                        title={connection[column.id]}
                         href={column.id === "userEmail" &&
                         connection[column.id] !== "-"
                           ? `mailto:${connection[column.id]}`
@@ -309,9 +334,7 @@
                             : undefined}
                         class:hasNavigationUrl={connection[column.id] !== "-" &&
                           (!!column.navigationUrl || column.id === "userEmail")}
-                        >{column.id !== "duration"
-                          ? connection[column.id]
-                          : connection["durationString"]}</a
+                        >{connection[column.id]}</a
                       >
                     </td>
                   {/each}
@@ -336,6 +359,38 @@
 
   main {
     height: 100%;
+  }
+
+  .options-menu-button-container {
+    display: flex;
+    align-items: center;
+  }
+
+  .csv-button-container {
+    // padding-left: 10px;
+    padding-right: 10px;
+  }
+  .csv-button,
+  .options-menu-button {
+    border: none;
+    background: none;
+    // padding: 10px;
+    // border-radius: 5rem;
+    width: fit-content;
+    height: fit-content;
+    // height: 24px;
+
+    color: rgb(110, 110, 110);
+    &:hover {
+      color: black;
+      cursor: pointer;
+      // background-color: gray;
+    }
+  }
+
+  .csv-button-container {
+    display: flex;
+    align-items: end;
   }
 
   .period-select-container {

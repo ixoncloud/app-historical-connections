@@ -20,9 +20,11 @@
     "@ixon-cdk/simulator": "^1.21.0",
     "@ixon-cdk/svelte-builder": "^1.23.0",
     "@ixon-cdk/templates": "^1.21.0",
-    "@ixon-cdk/types": "^1.23.0"
+    "@ixon-cdk/types": "^1.23.0",
+    "@types/papaparse": "^5.5.2"
   },
   "dependencies": {
-    "date-fns": "^4.1.0"
+    "date-fns": "^4.1.0",
+    "papaparse": "^5.5.3"
   }
 }

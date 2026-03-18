@@ -30,7 +30,7 @@ export class ApiService {
     const toUTC = new Date(to).toISOString();
     const fromUTCFormatted = fromUTC.split(".")[0] + "Z";
     const toUTCFormatted = toUTC.split(".")[0] + "Z";
-
+    // &filters=in(after[0].user.publicId, "eX5GvXeEP61k")
     return this.context.getApiUrl("AuditLogList", {
       "page-size": "4000",
       filters: `in(target,"AgentConnectedUser","AgentDisconnectedUser")&filters=between(time,"${fromUTCFormatted}","${toUTCFormatted}")`,
@@ -139,8 +139,8 @@ export class ApiService {
             endDateMillis: this.getDistanceFromEpochInMilliseconds(
               pair.disconnection.time,
             ),
-            duration: "", // Just for sorting logic
-            durationString: this.getDistanceString(
+            // duration: "", // Just for sorting logic
+            duration: this.getDistanceString(
               pair.connection.time,
               pair.disconnection.time,
             ),
