@@ -132,14 +132,15 @@ export class ApiService {
             agentId: pair.connection.agentId,
             agentName: agentsDict[pair.connection.agentId]?.name ?? "-",
             startDate: this.getDateTimeString(pair.connection.time),
+            startDateTime: pair.connection.time,
             startDateMillis: this.getDistanceFromEpochInMilliseconds(
               pair.connection.time,
             ),
             endDate: this.getDateTimeString(pair.disconnection.time),
+            endDateTime: pair.disconnection.time,
             endDateMillis: this.getDistanceFromEpochInMilliseconds(
               pair.disconnection.time,
             ),
-            // duration: "", // Just for sorting logic
             duration: this.getDistanceString(
               pair.connection.time,
               pair.disconnection.time,

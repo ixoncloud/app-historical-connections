@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { ComponentContext } from "@ixon-cdk/types";
+  import type { ComponentContext, ComponentInput } from "@ixon-cdk/types";
   import { onMount } from "svelte";
   import type { HistoricalConnection } from "./models/historical-connection";
   import { ApiService } from "./services/api.service";
@@ -40,8 +40,8 @@
   // let searchPlaceholderString = "Search";
   let titleString = "Active Connections";
 
-  let fromDate: string;
-  let toDate: string;
+  let fromDate: string = "";
+  let toDate: string = "";
   // $: minToDate = fromDate;
 
   $: filteredConnections = search
@@ -161,6 +161,45 @@
     }
   }
 
+  async function openPeriodSelectionDialog() {
+    const result = await context.openFormDialog({
+      title: "Select period",
+      inputs: [
+        {
+          key: "startdate",
+          label: "Start date",
+          type: "Date",
+          required: true,
+        },
+        {
+          key: "enddate",
+          label: "End date",
+          type: "Date",
+          required: true,
+        },
+      ],
+      initialValue: {
+        startdate: fromDate ? fromDate : undefined,
+        enddate: toDate ? toDate : undefined,
+      },
+      submitButtonText: "Submit",
+      discardChangesPrompt: true,
+    });
+
+    if (result) {
+      // en-CA so it formats as yyyy-mm-dd
+      const startdate = new Date(result.value["startdate"]).toLocaleDateString(
+        "en-CA",
+      );
+      const enddate = new Date(result.value["enddate"]).toLocaleDateString(
+        "en-CA",
+      );
+      fromDate = startdate;
+      toDate = enddate;
+      getActiveConnections(apiService);
+    }
+  }
+
   let apiService: ApiService;
   let parseService = new ParseService();
   onMount(() => {
@@ -185,11 +224,6 @@
       client.destroy();
     };
   });
-
-  $: if (fromDate && toDate && apiService) {
-    console.log(fromDate, toDate);
-    getActiveConnections(apiService);
-  }
 </script>
 
 <main>
@@ -197,88 +231,85 @@
     <div class="card-header with-actions">
       <h3 class="card-title">{titleString}</h3>
 
-      <!-- <div class="csv-button-container">
+      <div class="header-actions-bar">
         <button
-          class="csv-button"
-          title="Download as CSV"
-          on:click={() => parseService.downloadAsCSV(sortedConnections)}
+          class="period-select-button"
+          on:click={() => openPeriodSelectionDialog()}
         >
-          <svg
-            height="24px"
-            viewBox="0 -960 960 960"
-            width="24px"
-            fill="currentColor"
-            ><path
-              d="M480-320 280-520l56-58 104 104v-326h80v326l104-104 56 58-200 200ZM240-160q-33 0-56.5-23.5T160-240v-120h80v120h480v-120h80v120q0 33-23.5 56.5T720-160H240Z"
-            /></svg
-          >
-        </button>
-      </div> -->
+          <div class="field field-from">
+            <span class="from"
+              >{context.translate("FROM", undefined, {
+                source: "global",
+              })}</span
+            >
+            <span class="from-value"
+              >{fromDate !== "" ? fromDate : "yyyy-mm-dd"}</span
+            >
+          </div>
 
-      <div class="period-select-container">
-        <div class="field">
-          <label for="from" class="from"
-            >{context.translate("FROM", undefined, {
+          <div class="field field-to">
+            <span class="to"
+              >{context
+                .translate("TO", undefined, {
+                  source: "global",
+                })
+                .slice(0, 1)
+                .toUpperCase()}{context
+                .translate("TO", undefined, {
+                  source: "global",
+                })
+                .toUpperCase()
+                .slice(1)
+                .toLowerCase()}</span
+            >
+            <span class="to-value">{toDate !== "" ? toDate : "yyyy-mm-dd"}</span
+            >
+          </div>
+          <!-- TODO: Translate Select a period -->
+          <!-- <button
+            class="period-select-button"
+            on:click={() => openPeriodSelectionDialog()}
+          >
+            {fromDate && toDate ? `${fromDate} - ${toDate}` : "Select a period"}
+          </button> -->
+        </button>
+
+        <div class="search-input-container">
+          <div class="search-input-prefix">
+            <svg width="24" height="24" viewBox="0 0 24 24">
+              <path d="M0 0h24v24H0z" fill="none" />
+              <path
+                d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"
+              />
+            </svg>
+          </div>
+          <input
+            class="search-input"
+            placeholder={context.translate("SEARCH", undefined, {
               source: "global",
-            })}</label
-          >
-          <input type="date" id="from" bind:value={fromDate} />
+            })}
+            bind:value={search}
+          />
         </div>
-
-        <div class="field">
-          <label for="to" class="to"
-            >{context
-              .translate("TO", undefined, {
-                source: "global",
-              })
-              .slice(0, 1)
-              .toUpperCase()}{context
-              .translate("TO", undefined, {
-                source: "global",
-              })
-              .toUpperCase()
-              .slice(1)
-              .toLowerCase()}</label
+        <div class="options-menu-button-container">
+          <button
+            title={context.translate("OPTIONS", undefined, {
+              source: "global",
+            })}
+            class="options-menu-button"
+            on:click={(event) => handleMoreActionsButtonClick(event)}
           >
-          <input type="date" id="to" bind:value={toDate} />
+            <svg
+              height="24px"
+              viewBox="0 -960 960 960"
+              width="24px"
+              fill="currentColor"
+              ><path
+                d="M480-160q-33 0-56.5-23.5T400-240q0-33 23.5-56.5T480-320q33 0 56.5 23.5T560-240q0 33-23.5 56.5T480-160Zm0-240q-33 0-56.5-23.5T400-480q0-33 23.5-56.5T480-560q33 0 56.5 23.5T560-480q0 33-23.5 56.5T480-400Zm0-240q-33 0-56.5-23.5T400-720q0-33 23.5-56.5T480-800q33 0 56.5 23.5T560-720q0 33-23.5 56.5T480-640Z"
+              /></svg
+            >
+          </button>
         </div>
-      </div>
-
-      <div class="search-input-container">
-        <div class="search-input-prefix">
-          <svg width="24" height="24" viewBox="0 0 24 24">
-            <path d="M0 0h24v24H0z" fill="none" />
-            <path
-              d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"
-            />
-          </svg>
-        </div>
-        <input
-          class="search-input"
-          placeholder={context.translate("SEARCH", undefined, {
-            source: "global",
-          })}
-          bind:value={search}
-        />
-      </div>
-      <div class="options-menu-button-container">
-        <button
-          title={context.translate("OPTIONS", undefined, {
-            source: "global",
-          })}
-          class="options-menu-button"
-          on:click={(event) => handleMoreActionsButtonClick(event)}
-        >
-          <svg
-            height="24px"
-            viewBox="0 -960 960 960"
-            width="24px"
-            fill="currentColor"
-            ><path
-              d="M480-160q-33 0-56.5-23.5T400-240q0-33 23.5-56.5T480-320q33 0 56.5 23.5T560-240q0 33-23.5 56.5T480-160Zm0-240q-33 0-56.5-23.5T400-480q0-33 23.5-56.5T480-560q33 0 56.5 23.5T560-480q0 33-23.5 56.5T480-400Zm0-240q-33 0-56.5-23.5T400-720q0-33 23.5-56.5T480-800q33 0 56.5 23.5T560-720q0 33-23.5 56.5T480-640Z"
-            /></svg
-          >
-        </button>
       </div>
     </div>
     <div class="card-content">
@@ -392,44 +423,53 @@
     align-items: center;
   }
 
-  // TODO: Remove
-  .csv-button-container {
-    // padding-left: 10px;
-    display: flex;
-    align-items: end;
-    padding-right: 10px;
-  }
   .csv-button,
   .options-menu-button {
     border: none;
     background: none;
-    // padding: 10px;
-    // border-radius: 5rem;
     width: fit-content;
     height: fit-content;
-    // height: 24px;
+    padding-right: 0;
 
     color: rgb(110, 110, 110);
     &:hover {
       color: black;
       cursor: pointer;
-      // background-color: gray;
     }
   }
 
-  .period-select-container {
+  .period-select-button {
     display: flex;
-    gap: 0.5rem;
     margin-right: 0.5rem;
+
+    background: none;
+    border: 1px solid rgba(0, 0, 0, 0.12);
+    border-radius: 2rem;
+    cursor: pointer;
+    box-shadow:
+      0 1px 3px rgba(0, 0, 0, 0.12),
+      0 1px 2px rgba(0, 0, 0, 0.08);
+    transition: box-shadow 0.2s ease;
+
+    &:hover {
+      background-color: rgba(0, 0, 0, 0.04);
+      box-shadow:
+        0 2px 6px rgba(0, 0, 0, 0.15),
+        0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+
+    & .field-from {
+      border-right: 1px solid #ccc;
+    }
 
     .field {
       font-family: Roboto, "Helvetica Neue", sans-serif;
-      // font-size: 12px;
-      // font-weight: 400;
-      padding: 0.5rem;
-      border: 1px solid #ccc;
-      border-radius: 8px;
-      max-width: 300px;
+      // padding: 0.5rem 0.2rem 0.5rem 0.2rem;
+      padding-left: 0.5rem;
+      padding-right: 0.5rem;
+      padding-top: 0.2rem;
+      padding-bottom: 0.2rem;
+      width: 80px;
 
       display: flex;
       flex-direction: column;
@@ -437,11 +477,17 @@
       & .from,
       & .to {
         font-size: 10px;
+        text-align: left;
       }
 
-      & input {
+      & .from-value,
+      & .to-value {
+        margin-left: 2px;
         border: none;
         cursor: pointer;
+        background: none;
+        text-align: left;
+        // font-style: italic;
       }
     }
   }
