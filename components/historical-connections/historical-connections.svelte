@@ -29,7 +29,8 @@
       name: "ROUTER",
       navigationUrl: "/fleet-manager/device-configurator/",
     },
-    { id: "startDate", name: "START_DATE" },
+    // TODO: Check why translation is not working
+    { id: "startDate", name: "Start date" },
     { id: "endDate", name: "END_DATE" },
     { id: "duration", name: "DURATION" },
   ];
@@ -37,12 +38,10 @@
   let historicalConnections: HistoricalConnection[] = [];
   let tableWidth = 0;
   let tableScrollTop = 0;
-  // let searchPlaceholderString = "Search";
   let titleString = "Active Connections";
 
   let fromDate: string = "";
   let toDate: string = "";
-  // $: minToDate = fromDate;
 
   $: filteredConnections = search
     ? historicalConnections.filter((connection) => {
@@ -265,13 +264,6 @@
             <span class="to-value">{toDate !== "" ? toDate : "yyyy-mm-dd"}</span
             >
           </div>
-          <!-- TODO: Translate Select a period -->
-          <!-- <button
-            class="period-select-button"
-            on:click={() => openPeriodSelectionDialog()}
-          >
-            {fromDate && toDate ? `${fromDate} - ${toDate}` : "Select a period"}
-          </button> -->
         </button>
 
         <div class="search-input-container">
