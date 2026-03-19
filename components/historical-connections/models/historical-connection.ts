@@ -5,10 +5,11 @@ export interface HistoricalConnection {
   agentName: string;
   agentId: string;
   startDate: string;
+  startDateTime: string;
   startDateMillis: number;
   endDate: string;
+  endDateTime: string;
   endDateMillis: number;
-  // duration: string;
   duration: string;
   durationMillis: number;
 }

@@ -143,6 +143,24 @@
     return parts[0];
   }
 
+  async function handleMoreActionsButtonClick(event: Event): Promise<void> {
+    event.stopImmediatePropagation();
+    // TODO: Add translation
+    const actions = [{ type: "export", title: "Export as CSV" }];
+    const target = event.target as HTMLElement;
+    const result = await context.openActionMenu(target, {
+      actions,
+    });
+    if (result) {
+      const resultAction = actions[result.index];
+      switch (resultAction?.type) {
+        case "export":
+          parseService.downloadAsCSV(sortedConnections);
+          break;
+      }
+    }
+  }
+
   let apiService: ApiService;
   let parseService = new ParseService();
   onMount(() => {
@@ -179,7 +197,7 @@
     <div class="card-header with-actions">
       <h3 class="card-title">{titleString}</h3>
 
-      <div class="csv-button-container">
+      <!-- <div class="csv-button-container">
         <button
           class="csv-button"
           title="Download as CSV"
@@ -195,7 +213,7 @@
             /></svg
           >
         </button>
-      </div>
+      </div> -->
 
       <div class="period-select-container">
         <div class="field">
@@ -242,10 +260,15 @@
           })}
           bind:value={search}
         />
-        <!-- {searchPlaceholderString} -->
       </div>
       <div class="options-menu-button-container">
-        <button title="Options" class="options-menu-button">
+        <button
+          title={context.translate("OPTIONS", undefined, {
+            source: "global",
+          })}
+          class="options-menu-button"
+          on:click={(event) => handleMoreActionsButtonClick(event)}
+        >
           <svg
             height="24px"
             viewBox="0 -960 960 960"
@@ -260,7 +283,10 @@
     </div>
     <div class="card-content">
       {#if tableScrollTop > 0}
-        <div class="table-header-drop-shadow" style="width: {tableWidth}px" />
+        <div
+          class="table-header-drop-shadow"
+          style="width: {tableWidth}px"
+        ></div>
       {/if}
       {#if historicalConnections.length}
         <div
@@ -366,8 +392,11 @@
     align-items: center;
   }
 
+  // TODO: Remove
   .csv-button-container {
     // padding-left: 10px;
+    display: flex;
+    align-items: end;
     padding-right: 10px;
   }
   .csv-button,
@@ -386,11 +415,6 @@
       cursor: pointer;
       // background-color: gray;
     }
-  }
-
-  .csv-button-container {
-    display: flex;
-    align-items: end;
   }
 
   .period-select-container {

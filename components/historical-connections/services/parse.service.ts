@@ -1,5 +1,6 @@
 import Papa from "papaparse";
 import type { HistoricalConnection } from "../models/historical-connection";
+import type { ExportedConnection } from "../models/exported-connection";
 
 export class ParseService {
   listToCsv(list: HistoricalConnection[]): string {
@@ -18,7 +19,19 @@ export class ParseService {
   exportCsv(csv: string) {}
 
   downloadAsCSV(data: HistoricalConnection[], fileName: string = "export.csv") {
-    const csvString = Papa.unparse(data);
+    console.log(data);
+    const cleanedData: ExportedConnection[] = data.map((item) => {
+      return {
+        userName: item.userName ?? "-",
+        userEmail: item.userEmail,
+        agentName: item.agentName,
+        startDateTime: item.startDateTime,
+        endDateTime: item.endDateTime,
+        duration: item.duration,
+        durationInMilliseconds: item.durationMillis,
+      };
+    });
+    const csvString = Papa.unparse(cleanedData);
 
     // Create a Blob with the CSV content and correct MIME type
     // Use '\ufeff' (BOM) to ensure Excel recognizes UTF-8 characters (like € or accents)
