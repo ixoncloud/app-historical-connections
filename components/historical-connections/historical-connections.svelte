@@ -1,6 +1,6 @@
 <script lang="ts">
   import type { ComponentContext, ComponentInput } from "@ixon-cdk/types";
-  import { onMount } from "svelte";
+  import { onMount, tick } from "svelte";
   import type { HistoricalConnection } from "./models/historical-connection";
   import { ApiService } from "./services/api.service";
   import { ParseService } from "./services/parse.service";
@@ -42,6 +42,9 @@
 
   let fromDate: string = "";
   let toDate: string = "";
+  let isLoading = false;
+  let itemsCollected = 0;
+  let isStructuring = false;
 
   $: filteredConnections = search
     ? historicalConnections.filter((connection) => {
@@ -57,7 +60,6 @@
 
   let sortedConnections: HistoricalConnection[] = [];
   $: {
-    console.log("start sort");
     const result = [...filteredConnections].sort((a, b) => {
       let aValue: string | number = a[sortColumn]!;
       let bValue: string | number = b[sortColumn]!;
@@ -125,10 +127,40 @@
   }
 
   function getActiveConnections(apiService: ApiService) {
+    isLoading = true;
+    itemsCollected = 0;
+    isStructuring = false;
     apiService
-      .getActiveConnections({ fromDate, toDate })
+      .getActiveConnections(
+        { fromDate, toDate },
+        // Single progress callback covering both loading phases:
+        //   'collecting'  - a batch of audit log records arrived; show the running total
+        //   'structuring' - all data fetched; about to run the synchronous pairing work.
+        //                   Returns a promise so the API service awaits a guaranteed
+        //                   browser paint (tick() + double rAF) before blocking the thread.
+        async (event) => {
+          if (event.phase === "collecting") {
+            itemsCollected = event.count;
+          } else {
+            // phase === 'structuring'
+            isStructuring = true;
+            // tick()                       - flushes Svelte's pending DOM updates
+            // first requestAnimationFrame  - browser renders & paints the new DOM
+            // second requestAnimationFrame - we resume at the start of the NEXT
+            //                               frame, after the paint is complete
+            await tick();
+            await new Promise((resolve) =>
+              requestAnimationFrame(() => requestAnimationFrame(resolve)),
+            );
+          }
+        },
+      )
       .then((connections) => {
         historicalConnections = connections;
+      })
+      .finally(() => {
+        isLoading = false;
+        isStructuring = false;
       });
   }
 
@@ -233,6 +265,7 @@
       <div class="header-actions-bar">
         <button
           class="period-select-button"
+          disabled={isLoading}
           on:click={() => openPeriodSelectionDialog()}
         >
           <div class="field field-from">
@@ -277,6 +310,7 @@
           </div>
           <input
             class="search-input"
+            disabled={isLoading}
             placeholder={context.translate("SEARCH", undefined, {
               source: "global",
             })}
@@ -397,6 +431,18 @@
       {/if}
     </div>
   </div>
+  {#if isLoading}
+    <div class="loading-overlay" aria-busy="true" aria-label="Loading">
+      <div class="spinner"></div>
+      <p class="loading-count">
+        {isStructuring
+          ? "Structuring data..."
+          : itemsCollected > 0
+            ? `${itemsCollected.toLocaleString()} items collected...`
+            : "\u00a0"}
+      </p>
+    </div>
+  {/if}
 </main>
 
 <style lang="scss">
@@ -404,10 +450,12 @@
   @use "./styles/table" as table;
   @use "./styles/search-input" as searchInput;
   @use "./styles/sort" as sort;
+  @use "./styles/spinner" as spinner;
   $heading-color: #005014;
 
   main {
     height: 100%;
+    position: relative;
   }
 
   .options-menu-button-container {

@@ -30,7 +30,6 @@ export class ApiService {
     const toUTC = new Date(to).toISOString();
     const fromUTCFormatted = fromUTC.split(".")[0] + "Z";
     const toUTCFormatted = toUTC.split(".")[0] + "Z";
-    // &filters=in(after[0].user.publicId, "eX5GvXeEP61k")
     return this.context.getApiUrl("AuditLogList", {
       "page-size": "4000",
       filters: `in(target,"AgentConnectedUser","AgentDisconnectedUser")&filters=between(time,"${fromUTCFormatted}","${toUTCFormatted}")`,
@@ -44,6 +43,7 @@ export class ApiService {
   private async fetchAllPaginated<T>(
     urlWithParams: string,
     options: RequestInit,
+    onBatch?: (batchSize: number) => void,
   ): Promise<T[]> {
     let allItems: T[] = [];
     let moreAfter: string | undefined = undefined;
@@ -59,7 +59,9 @@ export class ApiService {
 
       const res = await fetch(url.toString(), options);
       const data = await res.json();
-      allItems = allItems.concat(data.data || []);
+      const batch: T[] = data.data || [];
+      allItems = allItems.concat(batch);
+      onBatch?.(batch.length);
       if (data.moreAfter === moreAfter) break;
       moreAfter = data.moreAfter;
     } while (moreAfter);
@@ -70,10 +72,12 @@ export class ApiService {
   /**
    * Retrieves all active connections
    */
-  async getActiveConnections(period: {
-    fromDate: string;
-    toDate: string;
-  }): Promise<HistoricalConnection[]> {
+  async getActiveConnections(
+    period: { fromDate: string; toDate: string },
+    onProgress?: (
+      event: { phase: "collecting"; count: number } | { phase: "structuring" },
+    ) => Promise<void> | void,
+  ): Promise<HistoricalConnection[]> {
     const usersUrl = this.context.getApiUrl("UserList", {
       "page-size": "4000",
       fields: "publicId, name, emailAddress",
@@ -86,7 +90,11 @@ export class ApiService {
     });
     const options = { method: "GET", headers: this.headers };
 
-    console.log("start collecting");
+    let totalFetched = 0;
+    const reportBatch = (batchSize: number) => {
+      totalFetched += batchSize;
+      onProgress?.({ phase: "collecting", count: totalFetched });
+    };
 
     return await Promise.all([
       this.fetchAllPaginated<Agent>(agentsUrl, options),
@@ -101,12 +109,12 @@ export class ApiService {
         acc[agent.publicId] = agent;
         return acc;
       }, {});
-      // const agentsWithConnections: Agent[] = agents.filter((a: Agent) => a.connectedUsers.length > 0);
 
       const results: ConnectionEvent[] = (
         await this.fetchAllPaginated<AuditLog>(
           this.createAuditlogUrl(period),
           options,
+          reportBatch,
         )
       ).map((auditlog) => {
         return {
@@ -116,6 +124,10 @@ export class ApiService {
           user: auditlog.after[0].user,
         };
       });
+      // Await the onProgress('structuring') callback before proceeding. The
+      // callback is async so the UI layer can guarantee a browser paint (via
+      // tick() + double rAF) before this synchronous work blocks the main thread.
+      await onProgress?.({ phase: "structuring" });
       const connectionPairs = this.createConnectionPairs(results);
 
       let historicalConnections: HistoricalConnection[] = [];
