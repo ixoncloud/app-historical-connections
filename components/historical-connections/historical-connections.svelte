@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { ComponentContext, ComponentInput } from "@ixon-cdk/types";
+  import type { ComponentContext } from "@ixon-cdk/types";
   import { onMount, tick } from "svelte";
   import type { HistoricalConnection } from "./models/historical-connection";
   import { ApiService } from "./services/api.service";
@@ -485,21 +485,25 @@
     display: flex;
     margin-right: 0.5rem;
 
-    background: none;
-    border: 1px solid rgba(0, 0, 0, 0.12);
+    // background: none;
+    // border: 1px solid rgba(0, 0, 0, 0.12);
+    border: none;
     border-radius: 2rem;
     cursor: pointer;
-    box-shadow:
-      0 1px 3px rgba(0, 0, 0, 0.12),
-      0 1px 2px rgba(0, 0, 0, 0.08);
+    // box-shadow:
+    //   0 1px 3px rgba(0, 0, 0, 0.12),
+    //   0 1px 2px rgba(0, 0, 0, 0.08);
     transition: box-shadow 0.2s ease;
+    background-color: color-mix(in srgb, transparent, currentcolor 4%);
 
-    &:hover {
-      background-color: rgba(0, 0, 0, 0.04);
-      box-shadow:
-        0 2px 6px rgba(0, 0, 0, 0.15),
-        0 2px 4px rgba(0, 0, 0, 0.1);
-    }
+    color: currentcolor;
+
+    // &:hover {
+    //   background-color: rgba(0, 0, 0, 0.04);
+    //   box-shadow:
+    //     0 2px 6px rgba(0, 0, 0, 0.15),
+    //     0 2px 4px rgba(0, 0, 0, 0.1);
+    // }
 
     & .field-from {
       border-right: 1px solid #ccc;
@@ -530,7 +534,6 @@
         cursor: pointer;
         background: none;
         text-align: left;
-        // font-style: italic;
       }
     }
   }
