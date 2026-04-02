@@ -32,7 +32,7 @@ export class ApiService {
     const toUTCFormatted = toUTC.split(".")[0] + "Z";
     return this.context.getApiUrl("AuditLogList", {
       "page-size": "4000",
-      filters: `in(target,"AgentConnectedUser","AgentDisconnectedUser")&filters=between(time,"${fromUTCFormatted}","${toUTCFormatted}")`,
+      filters: `in(target,"AgentConnectedUser","AgentDisconnectedUser", "WebAccessOpened")&filters=between(time,"${fromUTCFormatted}","${toUTCFormatted}")`,
     });
   }
 
@@ -110,27 +110,55 @@ export class ApiService {
         return acc;
       }, {});
 
-      const results: ConnectionEvent[] = (
-        await this.fetchAllPaginated<AuditLog>(
-          this.createAuditlogUrl(period),
-          options,
-          reportBatch,
-        )
-      ).map((auditlog) => {
-        return {
-          agentId: auditlog.topic.agent,
-          event: auditlog.target,
-          time: auditlog.time,
-          user: auditlog.after[0].user,
-        };
-      });
+      const results: AuditLog[] = await this.fetchAllPaginated<AuditLog>(
+        this.createAuditlogUrl(period),
+        options,
+        reportBatch,
+      );
+      // .map((auditlog) => {
+      //   return {
+      //     agentId: auditlog.topic.agent,
+      //     event: auditlog.target,
+      //     time: auditlog.time,
+      //     user: auditlog.after[0].user,
+      //   };
+      // });
+
+      console.log(results);
+      const logs = results.reduce<{
+        easyAccess: AuditLog[];
+        vpn: ConnectionEvent[];
+      }>(
+        (acc, auditlog) => {
+          if (auditlog.target === "WebAccessOpened") {
+            // HTTP
+            if ((auditlog.after?.[0] as any)?.server?.type === "http") {
+              acc.easyAccess.push(auditlog);
+            }
+            // VNC
+            if ((auditlog.after?.[0] as any)?.server?.type === "vnc") {
+              acc.easyAccess.push(auditlog);
+            }
+          } else {
+            acc.vpn.push({
+              agentId: auditlog.topic.agent,
+              event: auditlog.target,
+              time: auditlog.time,
+              user: auditlog.after[0].user,
+            });
+          }
+          return acc;
+        },
+        { easyAccess: [], vpn: [] },
+      );
       // Await the onProgress('structuring') callback before proceeding. The
       // callback is async so the UI layer can guarantee a browser paint (via
       // tick() + double rAF) before this synchronous work blocks the main thread.
       await onProgress?.({ phase: "structuring" });
-      const connectionPairs = this.createConnectionPairs(results);
+      const connectionPairs = this.createConnectionPairs(logs.vpn);
 
       let historicalConnections: HistoricalConnection[] = [];
+      console.log(logs.easyAccess);
 
       for (let i = 0; i < connectionPairs.length; i++) {
         const pair = connectionPairs[i];
@@ -161,12 +189,45 @@ export class ApiService {
               pair.connection.time,
               pair.disconnection.time,
             ),
+            type: "VPN",
           },
         ];
       }
+
+      // console.log(historicalConnections);
+
+      for (let i = 0; i < logs.easyAccess.length; i++) {
+        const log = logs.easyAccess[i];
+        historicalConnections = [
+          ...historicalConnections,
+          {
+            userName: log.actor.resource.name,
+            userId: log.actor.resource.publicId,
+            userEmail:
+              usersDict[log.actor.resource.publicId]?.emailAddress ?? "-",
+            agentId: log.topic.agent,
+            agentName: agentsDict[log.topic.agent]?.name ?? "-",
+            startDate: this.getDateTimeString(log.time),
+            startDateTime: log.time,
+            startDateMillis: this.getDistanceFromEpochInMilliseconds(log.time),
+            endDate: "-",
+            endDateTime: log.time,
+            endDateMillis: this.getDistanceFromEpochInMilliseconds(log.time),
+            duration: "-",
+            durationMillis: 0,
+            type: log.after[0].server.type.toUpperCase() as "HTTP" | "VNC",
+          },
+        ];
+      }
+      console.log(historicalConnections);
+
       return historicalConnections;
     });
   }
+
+  // easyAccessStep() {}
+
+  // vpnStep() {}
 
   /**
    * Forms pairs between all retrieved connections and disconnections

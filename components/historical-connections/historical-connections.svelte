@@ -11,7 +11,8 @@
     | "agentName"
     | "startDate"
     | "endDate"
-    | "duration";
+    | "duration"
+    | "type";
 
   export let context: ComponentContext;
   let search = "";

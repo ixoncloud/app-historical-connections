@@ -12,4 +12,5 @@ export interface HistoricalConnection {
   endDateMillis: number;
   duration: string;
   durationMillis: number;
+  type: "VPN" | "HTTP" | "VNC";
 }

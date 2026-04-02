@@ -1,6 +1,10 @@
 export interface AuditLog {
-    after: {user: {name: string, publicId: string}}[];
-    target: "AgentConnectedUser" | "AgentDisconnectedUser";
-    time: string;
-    topic: {agent: string, company: string};
+  after: {
+    server: { type: string };
+    user: { name: string; publicId: string };
+  }[];
+  target: "AgentConnectedUser" | "AgentDisconnectedUser" | "WebAccessOpened";
+  time: string;
+  topic: { agent: string; company: string };
+  actor: { resource: { name: string; publicId: string } };
 }
