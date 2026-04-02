@@ -466,33 +466,21 @@
     align-items: center;
   }
 
-  .csv-button,
   .options-menu-button {
     border: none;
     background: none;
     width: fit-content;
     height: fit-content;
     padding-right: 0;
-
-    color: rgb(110, 110, 110);
-    &:hover {
-      color: black;
-      cursor: pointer;
-    }
+    cursor: pointer;
   }
 
   .period-select-button {
     display: flex;
     margin-right: 0.5rem;
-
-    // background: none;
-    // border: 1px solid rgba(0, 0, 0, 0.12);
     border: none;
     border-radius: 2rem;
     cursor: pointer;
-    // box-shadow:
-    //   0 1px 3px rgba(0, 0, 0, 0.12),
-    //   0 1px 2px rgba(0, 0, 0, 0.08);
     transition: box-shadow 0.2s ease;
     background-color: color-mix(in srgb, transparent, currentcolor 4%);
 
