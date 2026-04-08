@@ -8,16 +8,6 @@ export class ParseService {
     return csvString;
   }
 
-  listToJson(list: []): string {
-    return "";
-  }
-
-  jsonToCsv(json: string): string {
-    return "";
-  }
-
-  exportCsv(csv: string) {}
-
   downloadAsCSV(data: HistoricalConnection[], fileName: string = "export.csv") {
     console.log(data);
     const cleanedData: ExportedConnection[] = data.map((item) => {
@@ -29,6 +19,7 @@ export class ParseService {
         endDateTime: item.endDateTime,
         duration: item.duration,
         durationInMilliseconds: item.durationMillis,
+        connectionType: item.type,
       };
     });
     const csvString = Papa.unparse(cleanedData);

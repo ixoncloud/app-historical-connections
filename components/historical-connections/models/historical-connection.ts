@@ -9,7 +9,7 @@ export interface HistoricalConnection {
   startDateMillis: number;
   endDate: string;
   endDateTime: string;
-  endDateMillis: number;
+  endDateMillis?: number;
   duration: string;
   durationMillis: number;
   type: "VPN" | "HTTP" | "VNC";

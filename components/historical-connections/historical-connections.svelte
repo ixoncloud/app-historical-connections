@@ -34,6 +34,7 @@
     { id: "startDate", name: "Start date" },
     { id: "endDate", name: "END_DATE" },
     { id: "duration", name: "DURATION" },
+    { id: "type", name: "TYPE" },
   ];
 
   let historicalConnections: HistoricalConnection[] = [];
@@ -44,19 +45,41 @@
   let fromDate: string = "";
   let toDate: string = "";
   let isLoading = false;
+  let isFiltering = false;
+
+  const ALL_TYPES: HistoricalConnection["type"][] = ["VPN", "HTTP", "VNC"];
+  let selectedTypes: Set<HistoricalConnection["type"]> = new Set();
+  let typeDropdownOpen = false;
+
+  function toggleType(type: HistoricalConnection["type"]) {
+    if (selectedTypes.has(type)) {
+      selectedTypes.delete(type);
+    } else {
+      selectedTypes.add(type);
+    }
+    selectedTypes = new Set(selectedTypes);
+  }
+
+  function handleTypeFilterKeydown(event: KeyboardEvent) {
+    if (event.key === "Escape") typeDropdownOpen = false;
+  }
+
+  function handleTypeFilterOutsideClick(event: MouseEvent) {
+    const target = event.target as HTMLElement;
+    if (!target.closest(".type-filter")) typeDropdownOpen = false;
+  }
   let itemsCollected = 0;
   let isStructuring = false;
 
-  $: filteredConnections = search
-    ? historicalConnections.filter((connection) => {
-        const s = search.toLowerCase();
-        return (
-          connection.userName?.toLowerCase().includes(s) ||
-          connection.agentName?.toLowerCase().includes(s) ||
-          connection.userEmail?.toLowerCase().includes(s)
-        );
-      })
-    : historicalConnections;
+  $: filteredConnections = historicalConnections.filter((connection) => {
+    const s = search.toLowerCase();
+    return (
+      (connection.userName?.toLowerCase().includes(s) ||
+        connection.agentName?.toLowerCase().includes(s) ||
+        connection.userEmail?.toLowerCase().includes(s)) &&
+      (selectedTypes.size === 0 || selectedTypes.has(connection.type))
+    );
+  });
   // $: isNarrow = tableWidth < 320; Maybe for later
 
   let sortedConnections: HistoricalConnection[] = [];
@@ -72,11 +95,11 @@
         aValue = a["startDateMillis"];
         bValue = b["startDateMillis"];
       } else if (sortColumn === "endDate") {
-        aValue = a["endDateMillis"];
-        bValue = b["endDateMillis"];
+        aValue = a["endDateMillis"] ?? a["startDateMillis"];
+        bValue = b["endDateMillis"] ?? b["startDateMillis"];
       }
 
-      if (!aValue || !bValue) return 0;
+      if (aValue == null || bValue == null) return 0;
 
       if (typeof aValue === "string" && typeof bValue === "string") {
         aValue = aValue.toLowerCase();
@@ -193,6 +216,29 @@
     }
   }
 
+  async function handleTypeFilterButtonClick(event: Event): Promise<void> {
+    event.stopImmediatePropagation();
+    const target = event.currentTarget as HTMLElement;
+    const result = await context.openSelectPanel(target, {
+      multiple: true,
+      options: ALL_TYPES.map((type) => ({ text: type })),
+      selected: ALL_TYPES.reduce<number[]>((acc, type, i) => {
+        if (selectedTypes.has(type)) acc.push(i);
+        return acc;
+      }, []),
+    });
+    if (result) {
+      isFiltering = true;
+      await tick();
+      await new Promise((resolve) =>
+        requestAnimationFrame(() => requestAnimationFrame(resolve)),
+      );
+      selectedTypes = new Set(result.indexes.map((i) => ALL_TYPES[i]));
+      await tick();
+      isFiltering = false;
+    }
+  }
+
   async function openPeriodSelectionDialog() {
     const result = await context.openFormDialog({
       title: "Select period",
@@ -214,7 +260,7 @@
         startdate: fromDate ? fromDate : undefined,
         enddate: toDate ? toDate : undefined,
       },
-      submitButtonText: "Submit",
+      submitButtonText: "Confirm",
       discardChangesPrompt: true,
     });
 
@@ -258,6 +304,8 @@
   });
 </script>
 
+<svelte:window on:click={handleTypeFilterOutsideClick} />
+
 <main>
   <div class="card">
     <div class="card-header with-actions">
@@ -300,6 +348,24 @@
           </div>
         </button>
 
+        <div class="filter-menu-button-container">
+          <button
+            class="filter-menu-button"
+            disabled={isLoading || historicalConnections.length < 1}
+            on:click={(event) => handleTypeFilterButtonClick(event)}
+          >
+            <span
+              >{context.translate("TYPE", undefined, {
+                source: "global",
+              })}</span
+            >
+            <span
+              class="type-filter-badge"
+              class:visible={selectedTypes.size > 0}>{selectedTypes.size}</span
+            >
+          </button>
+        </div>
+
         <div class="search-input-container">
           <div class="search-input-prefix">
             <svg width="24" height="24" viewBox="0 0 24 24">
@@ -311,7 +377,7 @@
           </div>
           <input
             class="search-input"
-            disabled={isLoading}
+            disabled={isLoading || historicalConnections.length < 1}
             placeholder={context.translate("SEARCH", undefined, {
               source: "global",
             })}
@@ -435,15 +501,17 @@
       {/if}
     </div>
   </div>
-  {#if isLoading}
+  {#if isLoading || isFiltering}
     <div class="loading-overlay" aria-busy="true" aria-label="Loading">
       <div class="spinner"></div>
       <p class="loading-count">
-        {isStructuring
-          ? "Structuring data..."
-          : itemsCollected > 0
-            ? `${itemsCollected.toLocaleString()} items collected...`
-            : "\u00a0"}
+        {isFiltering
+          ? "Filtering..."
+          : isStructuring
+            ? "Structuring data..."
+            : itemsCollected > 0
+              ? `${itemsCollected.toLocaleString()} items collected...`
+              : "\u00a0"}
       </p>
     </div>
   {/if}
@@ -476,6 +544,53 @@
     cursor: pointer;
   }
 
+  .filter-menu-button-container {
+    display: flex;
+    align-items: center;
+  }
+
+  .filter-menu-button {
+    border: none;
+    border-radius: 2rem;
+    background-color: color-mix(in srgb, transparent, currentcolor 4%);
+    color: currentcolor;
+    font-family: Roboto, "Helvetica Neue", sans-serif;
+    font-size: 14px;
+    line-height: 24px;
+    padding: 0.3rem 0.75rem;
+    margin-right: 0.5rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    transition: background-color 0.15s ease;
+
+    &:disabled {
+      opacity: 0.4;
+      cursor: default;
+      // cursor: not-allowed;
+    }
+  }
+
+  .type-filter-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 18px;
+    height: 18px;
+    padding: 0 4px;
+    border-radius: 3px;
+    font-size: 11px;
+    font-weight: 600;
+    background-color: color-mix(in srgb, transparent, currentcolor 15%);
+    color: currentcolor;
+    visibility: hidden;
+
+    &.visible {
+      visibility: visible;
+    }
+  }
+
   .period-select-button {
     display: flex;
     margin-right: 0.5rem;
@@ -486,13 +601,6 @@
     background-color: color-mix(in srgb, transparent, currentcolor 4%);
 
     color: currentcolor;
-
-    // &:hover {
-    //   background-color: rgba(0, 0, 0, 0.04);
-    //   box-shadow:
-    //     0 2px 6px rgba(0, 0, 0, 0.15),
-    //     0 2px 4px rgba(0, 0, 0, 0.1);
-    // }
 
     & .field-from {
       border-right: 1px solid #ccc;
