@@ -1,6 +1,6 @@
 {
   "main": "pct-historical-connections.min.js",
-  "version": "8",
+  "version": "9",
   "sheetSettings": {
     "defaultCols": 6,
     "defaultRows": 6,
