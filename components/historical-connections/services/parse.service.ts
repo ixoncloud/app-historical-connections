@@ -9,7 +9,6 @@ export class ParseService {
   }
 
   downloadAsCSV(data: HistoricalConnection[], fileName: string = "export.csv") {
-    console.log(data);
     const cleanedData: ExportedConnection[] = data.map((item) => {
       return {
         userName: item.userName ?? "-",
