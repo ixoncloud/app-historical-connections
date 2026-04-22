@@ -124,7 +124,6 @@ export class ApiService {
       //   };
       // });
 
-      console.log(results);
       const logs = results.reduce<{
         easyAccess: AuditLog[];
         vpn: ConnectionEvent[];
@@ -158,7 +157,6 @@ export class ApiService {
       const connectionPairs = this.createConnectionPairs(logs.vpn);
 
       let historicalConnections: HistoricalConnection[] = [];
-      console.log(logs.easyAccess);
 
       for (let i = 0; i < connectionPairs.length; i++) {
         const pair = connectionPairs[i];
@@ -194,8 +192,6 @@ export class ApiService {
         ];
       }
 
-      // console.log(historicalConnections);
-
       for (let i = 0; i < logs.easyAccess.length; i++) {
         const log = logs.easyAccess[i];
         historicalConnections = [
@@ -218,15 +214,10 @@ export class ApiService {
           },
         ];
       }
-      console.log(historicalConnections);
 
       return historicalConnections;
     });
   }
-
-  // easyAccessStep() {}
-
-  // vpnStep() {}
 
   /**
    * Forms pairs between all retrieved connections and disconnections
@@ -273,8 +264,6 @@ export class ApiService {
         unmatchedItems.push(connectionDict[key]);
       }
     }
-    console.log("Pairs: ", pairs.length);
-    console.log("Unmatched: ", unmatchedItems.length);
 
     return pairs;
   }

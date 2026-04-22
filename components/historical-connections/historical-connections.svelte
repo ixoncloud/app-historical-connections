@@ -18,7 +18,7 @@
   let search = "";
   let sortColumn: Column = "endDate";
   let sortDirection: "asc" | "desc" = "desc";
-  const MOBILE_VIEW_THRESHOLD: number = 500;
+  const MOBILE_VIEW_THRESHOLD: number = 600;
   const columns: {
     id: Column;
     name: string;
@@ -119,8 +119,8 @@
       if (aValue == null || bValue == null) return 0;
 
       if (typeof aValue === "string" && typeof bValue === "string") {
-        aValue = aValue.toLowerCase();
-        bValue = bValue.toLowerCase();
+        aValue = aValue.toLowerCase().trim();
+        bValue = bValue.toLowerCase().trim();
       }
 
       if (aValue < bValue) return sortDirection === "asc" ? -1 : 1;
@@ -129,7 +129,6 @@
     });
 
     sortedConnections = result;
-    console.log("Sort finished");
   }
 
   /**
