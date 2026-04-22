@@ -18,13 +18,15 @@
   let search = "";
   let sortColumn: Column = "endDate";
   let sortDirection: "asc" | "desc" = "desc";
-  let columns: {
+  const MOBILE_VIEW_THRESHOLD: number = 500;
+  const columns: {
     id: Column;
     name: string;
     navigationUrl?: string;
+    hideOnMobile?: boolean;
   }[] = [
     { id: "userName", name: "USER", navigationUrl: "/admin/users/" },
-    { id: "userEmail", name: "EMAIL" },
+    { id: "userEmail", name: "EMAIL", hideOnMobile: true },
     {
       id: "agentName",
       name: "ROUTER",
@@ -32,10 +34,17 @@
     },
     // TODO: Check why translation is not working
     { id: "startDate", name: "Start date" },
-    { id: "endDate", name: "END_DATE" },
-    { id: "duration", name: "DURATION" },
+    { id: "endDate", name: "END_DATE", hideOnMobile: true },
+    { id: "duration", name: "DURATION", hideOnMobile: true },
     { id: "type", name: "TYPE" },
   ];
+
+  $: visible_columns = columns.filter(
+    (col) =>
+      !col.hideOnMobile ||
+      tableWidth === 0 ||
+      tableWidth >= MOBILE_VIEW_THRESHOLD,
+  );
 
   let historicalConnections: HistoricalConnection[] = [];
   let tableWidth = 0;
@@ -81,6 +90,14 @@
     );
   });
   // $: isNarrow = tableWidth < 320; Maybe for later
+
+  $: if (
+    tableWidth > 0 &&
+    tableWidth < MOBILE_VIEW_THRESHOLD &&
+    sortColumn === "endDate"
+  ) {
+    sortColumn = "startDate";
+  }
 
   let sortedConnections: HistoricalConnection[] = [];
   $: {
@@ -240,6 +257,11 @@
   }
 
   async function openPeriodSelectionDialog() {
+    const oneYearAgo = new Date();
+    oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
+    oneYearAgo.setHours(0, 0, 0, 0);
+    const minDateHint = `${oneYearAgo.getDate()}-${oneYearAgo.getMonth() + 1}-${oneYearAgo.getFullYear()}`;
+
     const result = await context.openFormDialog({
       title: "Select period",
       inputs: [
@@ -254,6 +276,7 @@
           label: "End date",
           type: "Date",
           required: true,
+          hint: `Data is only available for the past year (from ${minDateHint})`,
         },
       ],
       initialValue: {
@@ -421,7 +444,7 @@
           <table class="base-table">
             <thead>
               <tr>
-                {#each columns as column}
+                {#each visible_columns as column}
                   <th
                     class="column-header-cell"
                     on:click={() => handleSort(column.id)}
@@ -468,7 +491,7 @@
             <tbody>
               {#each sortedConnections as connection}
                 <tr data-testid="active-connections-overview-table-row">
-                  {#each columns as column}
+                  {#each visible_columns as column}
                     <td
                       on:mouseenter={(e) =>
                         showTooltipIfEllipsed(e, String(connection[column.id]))}
