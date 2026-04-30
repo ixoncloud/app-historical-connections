@@ -258,8 +258,7 @@
   async function openPeriodSelectionDialog() {
     const oneYearAgo = new Date();
     oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
-    oneYearAgo.setHours(0, 0, 0, 0);
-    const minDateHint = `${oneYearAgo.getDate()}-${oneYearAgo.getMonth() + 1}-${oneYearAgo.getFullYear()}`;
+    const minDate = oneYearAgo.toLocaleDateString("en-CA");
 
     const result = await context.openFormDialog({
       title: "Select period",
@@ -268,14 +267,15 @@
           key: "startdate",
           label: "Start date",
           type: "Date",
+          minDate,
           required: true,
         },
         {
           key: "enddate",
           label: "End date",
           type: "Date",
+          minDate,
           required: true,
-          hint: `Data is only available for the past year (from ${minDateHint})`,
         },
       ],
       initialValue: {
