@@ -258,7 +258,7 @@
   async function openPeriodSelectionDialog() {
     const oneYearAgo = new Date();
     oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
-    const minDate = oneYearAgo.toLocaleDateString("en-CA");
+    const min = oneYearAgo.toLocaleDateString("en-CA");
 
     const result = await context.openFormDialog({
       title: "Select period",
@@ -267,14 +267,14 @@
           key: "startdate",
           label: "Start date",
           type: "Date",
-          minDate,
+          min,
           required: true,
         },
         {
           key: "enddate",
           label: "End date",
           type: "Date",
-          minDate,
+          min,
           required: true,
         },
       ],
