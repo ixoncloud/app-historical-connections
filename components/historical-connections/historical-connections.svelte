@@ -39,6 +39,21 @@
     { id: "type", name: "TYPE" },
   ];
 
+  let isNarrow = false;
+  let showFilters = false;
+  let filterButtonEl: HTMLElement;
+  let cardBodyEl: HTMLElement;
+  let filterDropdownLeft = 0;
+
+  function toggleFilters() {
+    showFilters = !showFilters;
+    if (showFilters && filterButtonEl && cardBodyEl) {
+      const btnRect = filterButtonEl.getBoundingClientRect();
+      const bodyRect = cardBodyEl.getBoundingClientRect();
+      filterDropdownLeft = btnRect.left - bodyRect.left;
+    }
+  }
+
   $: visible_columns = columns.filter(
     (col) =>
       !col.hideOnMobile ||
@@ -232,29 +247,6 @@
     }
   }
 
-  async function handleTypeFilterButtonClick(event: Event): Promise<void> {
-    event.stopImmediatePropagation();
-    const target = event.currentTarget as HTMLElement;
-    const result = await context.openSelectPanel(target, {
-      multiple: true,
-      options: ALL_TYPES.map((type) => ({ text: type })),
-      selected: ALL_TYPES.reduce<number[]>((acc, type, i) => {
-        if (selectedTypes.has(type)) acc.push(i);
-        return acc;
-      }, []),
-    });
-    if (result) {
-      isFiltering = true;
-      await tick();
-      await new Promise((resolve) =>
-        requestAnimationFrame(() => requestAnimationFrame(resolve)),
-      );
-      selectedTypes = new Set(result.indexes.map((i) => ALL_TYPES[i]));
-      await tick();
-      isFiltering = false;
-    }
-  }
-
   async function openPeriodSelectionDialog() {
     const oneYearAgo = new Date();
     oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
@@ -307,9 +299,6 @@
     apiService = new ApiService(context);
     parseService = new ParseService();
 
-    // searchPlaceholderString = context.translate("SEARCH", undefined, {
-    //   source: "global",
-    // });
     titleString = context.translate("HISTORICAL_CONNECTIONS", undefined, {
       source: "global",
     });
@@ -372,9 +361,10 @@
 
         <div class="filter-menu-button-container">
           <button
+            bind:this={filterButtonEl}
             class="filter-menu-button"
             disabled={isLoading || historicalConnections.length < 1}
-            on:click={(event) => handleTypeFilterButtonClick(event)}
+            on:click={toggleFilters}
           >
             <span
               >{context.translate("TYPE", undefined, {
@@ -427,100 +417,128 @@
         </div>
       </div>
     </div>
-    <div class="card-content">
-      {#if tableScrollTop > 0}
-        <div
-          class="table-header-drop-shadow"
-          style="width: {tableWidth}px"
-        ></div>
-      {/if}
-      {#if historicalConnections.length}
-        <div
-          class="table-wrapper"
-          bind:clientWidth={tableWidth}
-          on:scroll={handleTableScroll}
-        >
-          <table class="base-table">
-            <thead>
-              <tr>
-                {#each visible_columns as column}
-                  <th
-                    class="column-header-cell"
-                    on:click={() => handleSort(column.id)}
-                  >
-                    <div class="column-header">
-                      <span class="column-name"
-                        >{context.translate(column.name, undefined, {
-                          source: "global",
-                        })}</span
-                      >
-                      <span class="sort-arrow">
-                        {#if sortColumn === column.id}
-                          {#if sortDirection === "asc"}
-                            <svg
-                              xmlns="http://www.w3.org/2000/svg"
-                              height="16px"
-                              viewBox="0 -960 960 960"
-                              width="24px"
-                              fill="currentColor"
-                              ><path
-                                d="M440-160v-487L216-423l-56-57 320-320 320 320-56 57-224-224v487h-80Z"
-                              /></svg
-                            >
-                          {/if}
-                          {#if sortDirection === "desc"}
-                            <svg
-                              xmlns="http://www.w3.org/2000/svg"
-                              height="16px"
-                              viewBox="0 -960 960 960"
-                              width="24px"
-                              fill="currentColor"
-                              ><path
-                                d="M440-800v487L216-537l-56 57 320 320 320-320-56-57-224 224v-487h-80Z"
-                              /></svg
-                            >
-                          {/if}
-                        {/if}
-                      </span>
-                    </div>
-                  </th>
-                {/each}
-              </tr>
-            </thead>
-            <tbody>
-              {#each sortedConnections as connection}
-                <tr data-testid="active-connections-overview-table-row">
+    <div class="card-body" bind:this={cardBodyEl}>
+      <div class="card-content">
+        {#if tableScrollTop > 0}
+          <div
+            class="table-header-drop-shadow"
+            style="width: {tableWidth}px"
+          ></div>
+        {/if}
+        {#if historicalConnections.length}
+          <div
+            class="table-wrapper"
+            bind:clientWidth={tableWidth}
+            on:scroll={handleTableScroll}
+          >
+            <table class="base-table">
+              <thead>
+                <tr>
                   {#each visible_columns as column}
-                    <td
-                      on:mouseenter={(e) =>
-                        showTooltipIfEllipsed(e, String(connection[column.id]))}
+                    <th
+                      class="column-header-cell"
+                      on:click={() => handleSort(column.id)}
                     >
-                      <a
-                        title={connection[column.id]}
-                        href={column.id === "userEmail" &&
-                        connection[column.id] !== "-"
-                          ? `mailto:${connection[column.id]}`
-                          : column.id === "agentName" &&
-                              connection[column.id] !== "-"
-                            ? `${getCompanyUrl() + column.navigationUrl + connection.agentId}`
-                            : column.id === "userName" &&
-                                connection[column.id] !== "-"
-                              ? `${getCompanyUrl() + column.navigationUrl + connection.userId}`
-                              : undefined}
-                        class:hasNavigationUrl={connection[column.id] !== "-" &&
-                          (!!column.navigationUrl || column.id === "userEmail")}
-                        >{connection[column.id]}</a
-                      >
-                    </td>
+                      <div class="column-header">
+                        <span class="column-name"
+                          >{context.translate(column.name, undefined, {
+                            source: "global",
+                          })}</span
+                        >
+                        <span class="sort-arrow">
+                          {#if sortColumn === column.id}
+                            {#if sortDirection === "asc"}
+                              <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                height="16px"
+                                viewBox="0 -960 960 960"
+                                width="24px"
+                                fill="currentColor"
+                                ><path
+                                  d="M440-160v-487L216-423l-56-57 320-320 320 320-56 57-224-224v487h-80Z"
+                                /></svg
+                              >
+                            {/if}
+                            {#if sortDirection === "desc"}
+                              <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                height="16px"
+                                viewBox="0 -960 960 960"
+                                width="24px"
+                                fill="currentColor"
+                                ><path
+                                  d="M440-800v487L216-537l-56 57 320 320 320-320-56-57-224 224v-487h-80Z"
+                                /></svg
+                              >
+                            {/if}
+                          {/if}
+                        </span>
+                      </div>
+                    </th>
                   {/each}
                 </tr>
-              {/each}
-            </tbody>
-          </table>
-        </div>
-      {:else}
-        <div class="no-historical-connections">No historical connections</div>
-      {/if}
+              </thead>
+              <tbody>
+                {#each sortedConnections as connection}
+                  <tr data-testid="active-connections-overview-table-row">
+                    {#each visible_columns as column}
+                      <td
+                        on:mouseenter={(e) =>
+                          showTooltipIfEllipsed(
+                            e,
+                            String(connection[column.id]),
+                          )}
+                      >
+                        <a
+                          title={connection[column.id]}
+                          href={column.id === "userEmail" &&
+                          connection[column.id] !== "-"
+                            ? `mailto:${connection[column.id]}`
+                            : column.id === "agentName" &&
+                                connection[column.id] !== "-"
+                              ? `${getCompanyUrl() + column.navigationUrl + connection.agentId}`
+                              : column.id === "userName" &&
+                                  connection[column.id] !== "-"
+                                ? `${getCompanyUrl() + column.navigationUrl + connection.userId}`
+                                : undefined}
+                          class:hasNavigationUrl={connection[column.id] !==
+                            "-" &&
+                            (!!column.navigationUrl ||
+                              column.id === "userEmail")}
+                          >{connection[column.id]}</a
+                        >
+                      </td>
+                    {/each}
+                  </tr>
+                {/each}
+              </tbody>
+            </table>
+          </div>
+        {:else}
+          <div class="no-historical-connections">No historical connections</div>
+        {/if}
+      </div>
+
+      <div class="card-overlay">
+        {#if showFilters}
+          <div
+            class="filter-container"
+            class:column={isNarrow}
+            style="top: 0; left: {filterDropdownLeft}px;"
+          >
+            {#each ALL_TYPES as type}
+              <label class="filter-type-option">
+                <input
+                  type="checkbox"
+                  checked={selectedTypes.has(type)}
+                  on:change={() => toggleType(type)}
+                />
+                {type}
+              </label>
+            {/each}
+          </div>
+        {/if}
+      </div>
     </div>
   </div>
   {#if isLoading || isFiltering}
@@ -670,5 +688,69 @@
   .no-historical-connections {
     font-size: 14px;
     margin-bottom: 16px;
+  }
+
+  .card-body {
+    flex: 1;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .card-overlay {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: 10;
+  }
+
+  .filter-container {
+    position: absolute;
+    pointer-events: auto;
+    display: flex;
+    flex-direction: column;
+    background-color: var(--card-bg, #fff);
+    border: 1px solid var(--card-border-color, #e0e0e0);
+    border-radius: 4px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+    padding: 4px 0;
+    min-width: 120px;
+  }
+
+  .filter-type-option {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 16px;
+    font-size: 14px;
+    cursor: pointer;
+
+    &:hover {
+      background-color: color-mix(in srgb, transparent, currentcolor 6%);
+    }
+
+    input[type="checkbox"] {
+      cursor: pointer;
+      accent-color: currentcolor;
+    }
+  }
+
+  .filter-button {
+    background-color: var(--accent);
+    color: var(--accent-color);
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    padding: 10px;
+    transition: background-color 0.3s ease;
+  }
+
+  .filter-container select {
+    padding: 10px;
+    border-radius: 5px;
+    border: 1px solid var(--card-border-color);
+    background-color: var(--card-bg);
+    color: var(--card-color);
   }
 </style>
