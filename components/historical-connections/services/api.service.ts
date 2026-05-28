@@ -1,4 +1,4 @@
-import type { ComponentContext } from "@ixon-cdk/types";
+import type { AgentServer, ComponentContext } from "@ixon-cdk/types";
 import type { Agent } from "../models/agent";
 import type { User } from "../models/user";
 import type { HistoricalConnection } from "../models/historical-connection";
@@ -32,7 +32,7 @@ export class ApiService {
     const toUTCFormatted = toUTC.split(".")[0] + "Z";
     return this.context.getApiUrl("AuditLogList", {
       "page-size": "4000",
-      filters: `in(target,"AgentConnectedUser","AgentDisconnectedUser", "WebAccessOpened")&filters=between(time,"${fromUTCFormatted}","${toUTCFormatted}")`,
+      filters: `in(target,"AgentConnectedUser","AgentDisconnectedUser", "WebAccessOpened", "WebaccessConnectedUser", "WebaccessDisconnectedUser")&filters=between(time,"${fromUTCFormatted}","${toUTCFormatted}")`,
     });
   }
 
@@ -86,7 +86,7 @@ export class ApiService {
     const agentsUrl = this.context.getApiUrl("AgentList", {
       "page-size": "4000",
       fields:
-        "name,activeStatus,activeVpnSession.rscServer.name,activeVpnSession.rscServer.publicId,activeVpnSession.rscServer.supportedLayers,activeVpnSession.vpnAddress, activeVpnSession.startedOn, vpnChangedOn, connectedUsers",
+        "name,activeStatus,activeVpnSession.rscServer.name,activeVpnSession.rscServer.publicId,activeVpnSession.rscServer.supportedLayers,activeVpnSession.vpnAddress, activeVpnSession.startedOn, vpnChangedOn, connectedUsers, servers.publicId, servers.type",
     });
     const options = { method: "GET", headers: this.headers };
 
@@ -110,23 +110,20 @@ export class ApiService {
         return acc;
       }, {});
 
+      const VNC_CUTOFF_DATE = new Date("2026-05-29T00:00:00Z");
+
       const results: AuditLog[] = await this.fetchAllPaginated<AuditLog>(
         this.createAuditlogUrl(period),
         options,
         reportBatch,
       );
-      // .map((auditlog) => {
-      //   return {
-      //     agentId: auditlog.topic.agent,
-      //     event: auditlog.target,
-      //     time: auditlog.time,
-      //     user: auditlog.after[0].user,
-      //   };
-      // });
 
       const logs = results.reduce<{
         easyAccess: AuditLog[];
         vpn: ConnectionEvent[];
+        vnc: ConnectionEvent[];
+        rdp: ConnectionEvent[];
+        ssh: ConnectionEvent[];
       }>(
         (acc, auditlog) => {
           if (auditlog.target === "WebAccessOpened") {
@@ -134,9 +131,45 @@ export class ApiService {
             if ((auditlog.after?.[0] as any)?.server?.type === "http") {
               acc.easyAccess.push(auditlog);
             }
-            // VNC
-            if ((auditlog.after?.[0] as any)?.server?.type === "vnc") {
+            if (
+              (auditlog.after?.[0] as any)?.server?.type === "vnc" &&
+              new Date(auditlog.time) < VNC_CUTOFF_DATE
+            ) {
               acc.easyAccess.push(auditlog);
+            }
+          } else if (
+            auditlog.target === "WebaccessConnectedUser" ||
+            auditlog.target === "WebaccessDisconnectedUser"
+          ) {
+            const agent = agentsDict[auditlog.after[0]?.agent?.publicId ?? ""];
+            const server = agent.servers.find(
+              (server) =>
+                server.publicId === auditlog.after[0].agentServer?.publicId,
+            );
+            if (
+              server?.type === "vnc" &&
+              new Date(auditlog.time) >= VNC_CUTOFF_DATE
+            ) {
+              acc.vnc.push({
+                agentId: auditlog.topic.agent,
+                event: auditlog.target,
+                time: auditlog.time,
+                user: auditlog.after[0].user,
+              });
+            } else if (server?.type === "rdp") {
+              acc.rdp.push({
+                agentId: auditlog.topic.agent,
+                event: auditlog.target,
+                time: auditlog.time,
+                user: auditlog.after[0].user,
+              });
+            } else if (server?.type === "ssh") {
+              acc.ssh.push({
+                agentId: auditlog.topic.agent,
+                event: auditlog.target,
+                time: auditlog.time,
+                user: auditlog.after[0].user,
+              });
             }
           } else {
             acc.vpn.push({
@@ -148,49 +181,46 @@ export class ApiService {
           }
           return acc;
         },
-        { easyAccess: [], vpn: [] },
+        { easyAccess: [], vpn: [], vnc: [], rdp: [], ssh: [] },
       );
       // Await the onProgress('structuring') callback before proceeding. The
       // callback is async so the UI layer can guarantee a browser paint (via
       // tick() + double rAF) before this synchronous work blocks the main thread.
       await onProgress?.({ phase: "structuring" });
-      const connectionPairs = this.createConnectionPairs(logs.vpn);
+
+      const vpnConnectionPairs = this.createConnectionPairs(logs.vpn);
+      const vncConnectionPairs = this.createConnectionPairs(logs.vnc);
+      const rdpConnectionPairs = this.createConnectionPairs(logs.rdp);
+      const sshConnectionPairs = this.createConnectionPairs(logs.ssh);
 
       let historicalConnections: HistoricalConnection[] = [];
-
-      for (let i = 0; i < connectionPairs.length; i++) {
-        const pair = connectionPairs[i];
-        historicalConnections = [
-          ...historicalConnections,
-          {
-            userName: pair.connection.user.name,
-            userId: pair.connection.user.publicId,
-            userEmail:
-              usersDict[pair.connection.user.publicId]?.emailAddress ?? "-",
-            agentId: pair.connection.agentId,
-            agentName: agentsDict[pair.connection.agentId]?.name ?? "-",
-            startDate: this.getDateTimeString(pair.connection.time),
-            startDateTime: pair.connection.time,
-            startDateMillis: this.getDistanceFromEpochInMilliseconds(
-              pair.connection.time,
-            ),
-            endDate: this.getDateTimeString(pair.disconnection.time),
-            endDateTime: pair.disconnection.time,
-            endDateMillis: this.getDistanceFromEpochInMilliseconds(
-              pair.disconnection.time,
-            ),
-            duration: this.getDistanceString(
-              pair.connection.time,
-              pair.disconnection.time,
-            ),
-            durationMillis: this.getDistanceInMilliseconds(
-              pair.connection.time,
-              pair.disconnection.time,
-            ),
-            type: "VPN",
-          },
-        ];
-      }
+      historicalConnections = [
+        ...historicalConnections,
+        ...this.connectionPairsToHistoricalConnections(
+          vpnConnectionPairs,
+          "VPN",
+          usersDict,
+          agentsDict,
+        ),
+        ...this.connectionPairsToHistoricalConnections(
+          vncConnectionPairs,
+          "VNC",
+          usersDict,
+          agentsDict,
+        ),
+        ...this.connectionPairsToHistoricalConnections(
+          rdpConnectionPairs,
+          "RDP",
+          usersDict,
+          agentsDict,
+        ),
+        ...this.connectionPairsToHistoricalConnections(
+          sshConnectionPairs,
+          "SSH",
+          usersDict,
+          agentsDict,
+        ),
+      ];
 
       for (let i = 0; i < logs.easyAccess.length; i++) {
         const log = logs.easyAccess[i];
@@ -219,6 +249,40 @@ export class ApiService {
     });
   }
 
+  connectionPairsToHistoricalConnections(
+    pairs: { connection: ConnectionEvent; disconnection: ConnectionEvent }[],
+    type: "VPN" | "VNC" | "RDP" | "SSH",
+    usersDict: Record<string, User>,
+    agentsDict: Record<string, Agent>,
+  ): HistoricalConnection[] {
+    return pairs.map((pair) => ({
+      userName: pair.connection.user.name,
+      userId: pair.connection.user.publicId,
+      userEmail: usersDict[pair.connection.user.publicId]?.emailAddress ?? "-",
+      agentId: pair.connection.agentId,
+      agentName: agentsDict[pair.connection.agentId]?.name ?? "-",
+      startDate: this.getDateTimeString(pair.connection.time),
+      startDateTime: pair.connection.time,
+      startDateMillis: this.getDistanceFromEpochInMilliseconds(
+        pair.connection.time,
+      ),
+      endDate: this.getDateTimeString(pair.disconnection.time),
+      endDateTime: pair.disconnection.time,
+      endDateMillis: this.getDistanceFromEpochInMilliseconds(
+        pair.disconnection.time,
+      ),
+      duration: this.getDistanceString(
+        pair.connection.time,
+        pair.disconnection.time,
+      ),
+      durationMillis: this.getDistanceInMilliseconds(
+        pair.connection.time,
+        pair.disconnection.time,
+      ),
+      type,
+    }));
+  }
+
   /**
    * Forms pairs between all retrieved connections and disconnections
    *
@@ -236,11 +300,17 @@ export class ApiService {
 
     for (let i = connectionEvents.length - 1; i >= 0; i--) {
       const connectionEvent = connectionEvents[i];
-      if (connectionEvent.event === "AgentConnectedUser") {
+      if (
+        connectionEvent.event === "AgentConnectedUser" ||
+        connectionEvent.event === "WebaccessConnectedUser"
+      ) {
         connectionDict[
           connectionEvent.agentId + ":" + connectionEvent.user.publicId
         ] = connectionEvent;
-      } else {
+      } else if (
+        connectionEvent.event === "AgentDisconnectedUser" ||
+        connectionEvent.event === "WebaccessDisconnectedUser"
+      ) {
         const matchingConnection: ConnectionEvent | undefined =
           connectionDict[
             connectionEvent.agentId + ":" + connectionEvent.user.publicId

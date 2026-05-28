@@ -1,6 +1,10 @@
 export interface ConnectionEvent {
-          agentId: string;
-          event: "AgentConnectedUser" | "AgentDisconnectedUser";
-          time: string;
-          user: {name: string, publicId: string};
+  agentId: string;
+  event:
+    | "AgentConnectedUser"
+    | "AgentDisconnectedUser"
+    | "WebaccessConnectedUser"
+    | "WebaccessDisconnectedUser";
+  time: string;
+  user: { name: string; publicId: string };
 }
